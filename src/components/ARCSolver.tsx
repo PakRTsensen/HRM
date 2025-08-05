@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, RotateCcw, Upload, Download, Grid3X3 } from 'lucide-react';
+import { Play, RotateCcw, Upload, Download, Grid as Grid3X3 } from 'lucide-react';
 
 const ARCSolver: React.FC = () => {
   const [inputGrid, setInputGrid] = useState<number[][]>(
