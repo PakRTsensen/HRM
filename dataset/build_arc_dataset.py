@@ -18,15 +18,15 @@ cli = ArgParser()
 
 class DataProcessConfig(BaseModel):
     # ARC-1
-    dataset_dirs: List[str] = ["dataset/raw-data/ARC-AGI/data", "dataset/raw-data/ConceptARC/corpus"]
-    output_dir: str = "data/arc-aug-1000"
+    dataset_dirs: List[str] = ["dataset/raw-data/ARC-AGI/data", "dataset/raw-data/ConceptARC/data", "dataset/raw-data/RE-ARC/data", "dataset/raw-data/Mini-ARC/datadataset/raw-data/", "dataset/raw-data/ARC-Heavy/data", "dataset/raw-data/ARC_synthetic_extend/data", "dataset/raw-data/arc-community/data"]
+    output_dir: str = "data/arc-aug"
     
     # ARC-2
     # dataset_dirs: List[str] = ["dataset/raw-data/ARC-AGI-2/data"]
     # output_dir: str = "data/arc-2-aug-1000"
 
     seed: int = 42
-    num_aug: int = 1000
+    num_aug: int = 1024000
     
     
 ARCMaxGridSize = 30
