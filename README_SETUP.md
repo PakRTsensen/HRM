@@ -1,70 +1,72 @@
-# HRM Setup Guide
+# Panduan Pengaturan HRM
 
-Bu rehber Hierarchical Reasoning Model (HRM) projesini kurmanız ve çalıştırmanız için gerekli adımları içerir.
+Panduan ini berisi langkah-langkah untuk menyiapkan dan menjalankan proyek Model Penalaran Hirarkis (HRM).
 
-## Hızlı Başlangıç
+## Mulai Cepat
 
-### 1. Otomatik Kurulum
+### 1. Instalasi Otomatis
 ```bash
-# Kurulum scriptini çalıştır
+# Jalankan skrip setup
 python3 setup.py
 
-# Veya bash script ile
+# Atau dengan skrip bash
 chmod +x install_dependencies.sh
 ./install_dependencies.sh
 ```
 
-### 2. Hızlı Demo (Sudoku Çözücü)
+### 2. Demo Cepat (Sudoku Solver)
 ```bash
-# Küçük bir demo çalıştır
+# Jalankan demo kecil
 python3 quick_demo.py
 
-# Özelleştirilmiş demo
+# Demo yang disesuaikan
 python3 quick_demo.py --dataset-size 100 --epochs 5000
 ```
 
-## Manuel Kurulum
 
-### Gereksinimler
+
+## Instalasi Manual
+
+#### Persyaratan
 - Python 3.8+
-- CUDA (opsiyonel ama önerilen)
+- CUDA (opsional tetapi disarankan)
 - 8GB+ RAM
-- GPU (önerilen)
+- GPU (disarankan)
 
-### Adım 1: Python Paketlerini Yükle
+### Langkah 1: Menginstal Paket Python
 ```bash
 pip install -r requirements.txt
 ```
 
-### Adım 2: FlashAttention Yükle (Opsiyonel)
+### Langkah 2: Instal FlashAttention (Opsional)
 ```bash
-# FlashAttention 2 (çoğu GPU için)
+# FlashAttention 2 (untuk sebagian besar GPU)
 pip install flash-attn
 
-# Veya Hopper GPU'lar için FlashAttention 3
+# Atau FlashAttention 3 untuk GPU Hopper
 git clone https://github.com/Dao-AILab/flash-attention.git
 cd flash-attention/hopper
 python setup.py install
 ```
 
-### Adım 3: Weights & Biases Kurulumu
+### Langkah 3: Pengaturan Bobot & Bias
 ```bash
 wandb login
 ```
 
-### Adım 4: Veri Setlerini Hazırla
+### Langkah 4: Menyiapkan Kumpulan Data
 
-#### Sudoku (Hızlı Test)
+#### Sudoku (Tes Cepat)
 ```bash
 python dataset/build_sudoku_dataset.py --output-dir data/sudoku-demo --subsample-size 100 --num-aug 100
 ```
 
 #### ARC-AGI
 ```bash
-# Submodule'ları başlat
+# Inisialisasi submodul
 git submodule update --init --recursive
 
-# ARC veri setini oluştur
+# Membuat kumpulan data ARC
 python dataset/build_arc_dataset.py
 ```
 
@@ -73,9 +75,9 @@ python dataset/build_arc_dataset.py
 python dataset/build_maze_dataset.py
 ```
 
-## Eğitim
+## Pendidikan
 
-### Hızlı Sudoku Eğitimi
+### Tutorial Sudoku Cepat
 ```bash
 python pretrain.py \
     data_path=data/sudoku-demo \
@@ -88,7 +90,7 @@ python pretrain.py \
     puzzle_emb_weight_decay=1.0
 ```
 
-### ARC Eğitimi
+### Pelatihan ARC
 ```bash
 python pretrain.py \
     data_path=data/arc-aug-1000 \
@@ -96,71 +98,71 @@ python pretrain.py \
     eval_interval=10000
 ```
 
-### Çoklu GPU Eğitimi
+### Tutorial Beberapa GPU
 ```bash
 OMP_NUM_THREADS=8 torchrun --nproc-per-node 8 pretrain.py data_path=data/arc-aug-1000
 ```
 
-## Değerlendirme
+## Evaluasi
 
-### Model Değerlendirme
+### Evaluasi Model
 ```bash
 python evaluate.py checkpoint=checkpoints/path/to/model
 ```
 
-### ARC Sonuçları
+### Hasil ARC
 ```bash
-# Jupyter notebook ile sonuçları incele
+# Memeriksa hasil dengan Jupyter notebook
 jupyter notebook arc_eval.ipynb
 ```
 
-## Veri Seti Görselleştirme
+## Visualisasi Kumpulan Data
 
-Veri setlerini görselleştirmek için:
-1. `puzzle_visualizer.html` dosyasını tarayıcıda aç
-2. Veri seti klasörünü yükle (örn: `data/sudoku-demo`)
+Untuk memvisualisasikan kumpulan data:
+1. Buka file `puzzle_visualiser.html` di browser
+2. Muat folder kumpulan data (mis. `data/sudoku-demo`)
 
-## Sorun Giderme
+## Pemecahan masalah
 
-### CUDA Sorunları
+## Masalah CUDA
 ```bash
-# CUDA versiyonunu kontrol et
+# Periksa versi CUDA
 nvidia-smi
 
-# PyTorch CUDA desteğini kontrol et
+# PyTorch memeriksa dukungan CUDA
 python -c "import torch; print(torch.cuda.is_available())"
 ```
 
-### Bellek Sorunları
-- `global_batch_size` değerini azalt
-- Daha küçük model kullan
-- CPU modunda çalıştır
+### Masalah Memori
+- Kurangi nilai `global_batch_size`
+- Gunakan model yang lebih kecil
+- Jalankan dalam mode CPU
 
-### FlashAttention Sorunları
+### Masalah FlashAttention
 ```bash
-# FlashAttention'ı devre dışı bırak
+# Nonaktifkan FlashAttention
 export DISABLE_FLASH_ATTN=1
 python pretrain.py ...
 ```
 
-## Önceden Eğitilmiş Modeller
+## Model yang Sudah dilatih
 
-Hugging Face'den önceden eğitilmiş modelleri indirebilirsiniz:
+Anda dapat mengunduh model yang sudah terlatih dari Hugging Face:
 - [ARC-AGI-2](https://huggingface.co/sapientinc/HRM-checkpoint-ARC-2)
 - [Sudoku Extreme](https://huggingface.co/sapientinc/HRM-checkpoint-sudoku-extreme)
 - [Maze 30x30](https://huggingface.co/sapientinc/HRM-checkpoint-maze-30x30-hard)
 
-## Performans İpuçları
+## Tips Performa
 
-1. **GPU Kullanımı**: CUDA destekli GPU kullanın
-2. **Batch Size**: GPU belleğinize göre ayarlayın
-3. **FlashAttention**: Hız için mutlaka yükleyin
-4. **Çoklu GPU**: Büyük modeller için torchrun kullanın
-5. **Veri Augmentasyonu**: Küçük veri setleri için artırın
+1. **Penggunaan GPU**: Gunakan GPU yang didukung CUDA
+2. **Ukuran Batch**: Atur sesuai dengan memori GPU Anda
+3. **Perhatian Flash**: Pastikan untuk menginstal untuk kecepatan
+4. **Banyak GPU**: Gunakan torchrun untuk model besar
+5. **Penambahan Data**: Tingkatkan untuk kumpulan data kecil
 
-## Destek
+## Dukungan
 
-Sorunlarınız için:
-1. Bu README'yi kontrol edin
-2. GitHub Issues'a bakın
-3. Weights & Biases loglarını kontrol edin
+Untuk masalah Anda:
+1. Periksa README ini
+2. Lihat Masalah GitHub
+3. Periksa log Weights & Biases
