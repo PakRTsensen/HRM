@@ -5,6 +5,7 @@ from glob import glob
 from tqdm import tqdm
 from collections import defaultdict
 import re
+from typing import List
 
 from argdantic import ArgParser
 from pydantic import BaseModel
@@ -13,43 +14,52 @@ from common import PuzzleDatasetMetadata
 
 cli = ArgParser()
 
+ARCMaxGridSize = 128
+
 class StitchConfig(BaseModel):
     source_dir: str = "data/arc-aug-chunks"
     output_dir: str = "data/arc-aug-final"
 
 def stitch_group(output_path: str, chunk_files: List[str]):
-    """Stitches numpy chunks together using memory-mapping."""
-    print(f"Stitching {len(chunk_files)} chunks into {output_path}...")
+    """Stitches numpy chunks together using memory-mapping for the output file."""
+    print(f"Stitching {len(chunk_files)} chunks into {os.path.basename(output_path)}...")
     
-    # First pass: determine final shape without loading data
+    # First pass: determine final shape without loading full data
     total_rows = 0
     dtype = None
     final_shape_rest = None
 
     for f in chunk_files:
-        with np.load(f, mmap_mode='r') as chunk:
-            if dtype is None:
-                dtype = chunk.dtype
-            if final_shape_rest is None:
-                final_shape_rest = chunk.shape[1:]
-            total_rows += chunk.shape[0]
+        # Load only the header to get shape and dtype info
+        with open(f, 'rb') as f_handle:
+            version = np.lib.format.read_magic(f_handle)
+            shape, fortran_order, dtype_descr = np.lib.format.read_array_header_1_0(f_handle)
+            if dtype is None: dtype = np.dtype(dtype_descr)
+            if final_shape_rest is None: final_shape_rest = shape[1:]
+            total_rows += shape[0]
     
+    if total_rows == 0:
+        print(f"Warning: No data to stitch for {os.path.basename(output_path)}. Skipping.")
+        return
+
     final_shape = (total_rows,) + final_shape_rest
     
     # Create the final memory-mapped file
-    if os.path.exists(output_path):
-        os.remove(output_path)
+    if os.path.exists(output_path): os.remove(output_path)
     stitched_array = np.memmap(output_path, dtype=dtype, mode='w+', shape=final_shape)
     
-    # Second pass: copy data
+    # Second pass: load each chunk into RAM and copy to the mmap file
     current_row = 0
     with tqdm(total=total_rows, desc=f"Copying to {os.path.basename(output_path)}", unit="row") as pbar:
         for f in chunk_files:
-            with np.load(f, mmap_mode='r') as chunk:
-                rows_in_chunk = chunk.shape[0]
-                stitched_array[current_row : current_row + rows_in_chunk] = chunk
-                current_row += rows_in_chunk
-                pbar.update(rows_in_chunk)
+            # Load one full chunk into memory (this is the workaround)
+            chunk = np.load(f, allow_pickle=True)
+            rows_in_chunk = chunk.shape[0]
+            if rows_in_chunk == 0: continue
+            
+            stitched_array[current_row : current_row + rows_in_chunk] = chunk
+            current_row += rows_in_chunk
+            pbar.update(rows_in_chunk)
 
     stitched_array.flush()
     print(f"Stitching for {os.path.basename(output_path)} complete.")
@@ -64,11 +74,11 @@ def stitch_indices(output_path: str, chunk_files: List[str]):
     dtype = np.int32
 
     for f in sorted(chunk_files): # Sort to ensure order
-        with np.load(f) as chunk:
-            # First element is always 0, skip it for all but the first chunk
-            data_to_add = chunk[1:] if all_indices else chunk
-            all_indices.append(data_to_add + offset)
-            offset += chunk[-1]
+        chunk = np.load(f)
+        # First element is always 0, skip it for all but the first chunk
+        data_to_add = chunk[1:] if all_indices else chunk
+        all_indices.append(data_to_add + offset)
+        offset += chunk[-1]
 
     final_array = np.concatenate(all_indices).astype(dtype)
     np.save(output_path, final_array)
