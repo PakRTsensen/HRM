@@ -31,10 +31,10 @@ class DataProcessConfig(BaseModel):
     ]
     output_dir: str = "data/arc-aug-chunks"
     seed: int = 42
-    num_aug: int = 1000
+    num_aug: int = 5
     
     
-ARCMaxGridSize = 30
+ARCMaxGridSize = 128
 ARCAugmentRetriesFactor = 5
     
 
@@ -140,17 +140,23 @@ def process_and_save_chunk(dataset_dir: str, config: DataProcessConfig, identifi
     puzzles_meta = []
     total_examples_to_generate = 0
     total_groups_to_generate = 0
-    for subdir in os.scandir(dataset_dir):
-        if not subdir.is_dir(): continue
-        for filename in glob(os.path.join(subdir.path, "*.json")):
-            with open(filename, "r") as f:
-                puzzle_json = json.load(f)
-                num_examples_in_puzzle = sum(len(v) for v in puzzle_json.values() if isinstance(v, list))
-                # Estimate augmentations. This is an approximation as some might not be unique.
-                num_augs = config.num_aug + 1
-                total_examples_to_generate += num_examples_in_puzzle * num_augs
-                total_groups_to_generate += num_augs
-                puzzles_meta.append({'file': filename, 'name': Path(filename).stem})
+    
+    # Robust file discovery
+    all_files = glob(os.path.join(dataset_dir, "*.json")) + glob(os.path.join(dataset_dir, "*/*.json"))
+    
+    for filename in all_files:
+        with open(filename, "r") as f:
+            puzzle_json = json.load(f)
+            num_examples_in_puzzle = sum(len(v) for v in puzzle_json.values() if isinstance(v, list))
+            # Estimate augmentations. This is an approximation as some might not be unique.
+            num_augs = config.num_aug + 1
+            total_examples_to_generate += num_examples_in_puzzle * num_augs
+            total_groups_to_generate += num_augs
+            puzzles_meta.append({'file': filename, 'name': Path(filename).stem})
+
+    if not puzzles_meta:
+        print(f"No puzzles found in {dataset_dir}, skipping.")
+        return
 
     # --- Memory-map file creation ---
     seq_len = ARCMaxGridSize * ARCMaxGridSize
@@ -219,15 +225,17 @@ def build_global_identifier_map(config: DataProcessConfig) -> Dict[str, int]:
     num_identifiers = 1
     for dataset_dir in config.dataset_dirs:
         if not os.path.exists(dataset_dir): continue
-        for subdir in os.scandir(dataset_dir):
-            if subdir.is_dir():
-                for filename in glob(os.path.join(subdir.path, "*.json")):
-                    with open(filename, "r") as f:
-                        puzzle_json = json.load(f)
-                        puzzle_id = puzzle_json.get("name", Path(filename).stem)
-                        if puzzle_id not in identifier_map:
-                            identifier_map[puzzle_id] = num_identifiers
-                            num_identifiers += 1
+        
+        # Robust file discovery
+        all_files = glob(os.path.join(dataset_dir, "*.json")) + glob(os.path.join(dataset_dir, "*/*.json"))
+
+        for filename in all_files:
+            with open(filename, "r") as f:
+                puzzle_json = json.load(f)
+                puzzle_id = puzzle_json.get("name", Path(filename).stem)
+                if puzzle_id not in identifier_map:
+                    identifier_map[puzzle_id] = num_identifiers
+                    num_identifiers += 1
     print(f"Found {len(identifier_map)} unique puzzle IDs globally.")
     return identifier_map
 
