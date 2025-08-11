@@ -179,7 +179,8 @@ def process_and_save_chunk(dataset_dir: str, config: DataProcessConfig, identifi
                         total_examples += 1
                     
                     results["puzzle_indices"].append(example_id)
-                    results["puzzle_identifiers"].append(identifier_map[puzzle.id])
+                    original_puzzle_id = puzzle.id.split('_')[0]
+                    results["puzzle_identifiers"].append(identifier_map[original_puzzle_id])
                     puzzle_id += 1
                     total_puzzles += 1
                 
