@@ -17,7 +17,7 @@ cli = ArgParser()
 ARCMaxGridSize = 128
 
 class StitchConfig(BaseModel):
-    source_dir: str = "data/arc-aug-chunks"
+    source_dir: str = "data/arc-aug-chunk"
     output_dir: str = "data/arc-aug-final"
 
 def stitch_group(output_path: str, chunk_files: List[str]):
@@ -50,16 +50,23 @@ def stitch_group(output_path: str, chunk_files: List[str]):
     
     # Second pass: load each chunk into RAM and copy to the mmap file
     current_row = 0
-    with tqdm(total=total_rows, desc=f"Copying to {os.path.basename(output_path)}", unit="row") as pbar:
+    copy_block_size = 1024  # Copy 1024 rows at a time for smoother progress bar
+    with tqdm(total=total_rows, desc=f"Copying to {os.path.basename(output_path)}", unit="row", mininterval=1.0) as pbar:
         for f in chunk_files:
-            # Load one full chunk into memory (this is the workaround)
+            # Load one full chunk into memory
             chunk = np.load(f, allow_pickle=True)
             rows_in_chunk = chunk.shape[0]
             if rows_in_chunk == 0: continue
-            
-            stitched_array[current_row : current_row + rows_in_chunk] = chunk
-            current_row += rows_in_chunk
-            pbar.update(rows_in_chunk)
+
+            # Copy in smaller blocks to update progress bar more frequently
+            for i in range(0, rows_in_chunk, copy_block_size):
+                end_i = min(i + copy_block_size, rows_in_chunk)
+                block = chunk[i:end_i]
+                rows_in_block = block.shape[0]
+                
+                stitched_array[current_row : current_row + rows_in_block] = block
+                current_row += rows_in_block
+                pbar.update(rows_in_block)
 
     stitched_array.flush()
     print(f"Stitching for {os.path.basename(output_path)} complete.")
