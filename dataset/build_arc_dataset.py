@@ -27,7 +27,7 @@ class DataProcessConfig(BaseModel):
     # output_dir: str = "data/arc-2-aug-1000"
 
     seed: int = 42
-    num_aug: int = 1024000
+    num_aug: int = 1000
     
     
 ARCMaxGridSize = 30
