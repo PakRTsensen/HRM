@@ -21,17 +21,17 @@ cli = ArgParser()
 class DataProcessConfig(BaseModel):
     dataset_dirs: List[str] = [
         "dataset/raw-data/ARC-AGI-1/data", 
-#        "dataset/raw-data/ConceptARC/data", 
-#        "dataset/raw-data/RE-ARC/data", 
-#        "dataset/raw-data/Mini-ARC/data", 
-#       "dataset/raw-data/ARC-Heavy/data", 
-#        "dataset/raw-data/ARC_synthetic_extend/data", 
-#        "dataset/raw-data/arc-community/data",
+        "dataset/raw-data/ConceptARC/data", 
+        "dataset/raw-data/RE-ARC/data", 
+        "dataset/raw-data/Mini-ARC/data", 
+       "dataset/raw-data/ARC-Heavy/data", 
+        "dataset/raw-data/ARC_synthetic_extend/data", 
+        "dataset/raw-data/arc-community/data",
         "dataset/raw-data/ARC-AGI-2/data"
     ]
     output_dir: str = "data/arc-aug-chunks"
     seed: int = 42
-    num_aug: int = 5
+    num_aug: int = 2
 
 ARCMaxGridSize = 128
 ARCAugmentRetriesFactor = 5
@@ -124,9 +124,17 @@ def process_and_save_chunk(dataset_dir: str, config: DataProcessConfig, identifi
         
         puzzle_group = get_single_puzzle_augmentations(Path(filename).stem, puzzle_json, config.num_aug)
         
+        group_had_valid_puzzle = False
         for puzzle in puzzle_group:
             original_puzzle_id = puzzle.id.split('_')[0]
-            results['puzzle_identifiers'].append(identifier_map[original_puzzle_id])
+            try:
+                puzzle_identifier = identifier_map[original_puzzle_id]
+            except KeyError:
+                tqdm.write(f"[Warning] Skipping puzzle with unknown ID: '{original_puzzle_id}' from file {filename}")
+                continue
+
+            results['puzzle_identifiers'].append(puzzle_identifier)
+            group_had_valid_puzzle = True
             
             for inp, out in puzzle.examples:
                 inp_aug, out_aug = np_grid_to_seq_translational_augment(inp, out, do_translation=is_train_split)
@@ -137,10 +145,11 @@ def process_and_save_chunk(dataset_dir: str, config: DataProcessConfig, identifi
             results['puzzle_indices'].append(example_id)
             puzzle_id += 1
         
-        results['group_indices'].append(puzzle_id)
-        total_groups += 1
-        total_puzzles += len(puzzle_group)
-        total_examples += sum(len(p.examples) for p in puzzle_group)
+        if group_had_valid_puzzle:
+            results['group_indices'].append(puzzle_id)
+            total_groups += 1
+            total_puzzles += len(puzzle_group)
+            total_examples += sum(len(p.examples) for p in puzzle_group)
 
     # --- Save the completed chunk from RAM to Disk ---
     print(f"Saving chunk {chunk_name_slug} to disk...")
