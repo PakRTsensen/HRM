@@ -1,3 +1,7 @@
+numpy
+argdantic
+pydantic
+tqdm
 torch
 adam-atan2
 einops

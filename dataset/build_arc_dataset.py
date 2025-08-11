@@ -6,6 +6,7 @@ import json
 import hashlib
 import numpy as np
 from glob import glob
+from tqdm import tqdm
 
 from argdantic import ArgParser
 from pydantic import BaseModel
@@ -18,7 +19,7 @@ cli = ArgParser()
 
 class DataProcessConfig(BaseModel):
     # ARC-1
-    dataset_dirs: List[str] = ["dataset/raw-data/ARC-AGI/data", "dataset/raw-data/ConceptARC/data", "dataset/raw-data/RE-ARC/data", "dataset/raw-data/Mini-ARC/datadataset/raw-data/", "dataset/raw-data/ARC-Heavy/data", "dataset/raw-data/ARC_synthetic_extend/data", "dataset/raw-data/arc-community/data"]
+    dataset_dirs: List[str] = ["dataset/raw-data/ARC-AGI-1/data", "dataset/raw-data/ConceptARC/data", "dataset/raw-data/RE-ARC/data", "dataset/raw-data/Mini-ARC/datadataset/raw-data/", "dataset/raw-data/ARC-Heavy/data", "dataset/raw-data/ARC_synthetic_extend/data", "dataset/raw-data/arc-community/data", "dataset/raw-data/ARC-AGI-2/data"]
     output_dir: str = "data/arc-aug"
     
     # ARC-2
@@ -152,33 +153,31 @@ def load_puzzles_arcagi(results: dict, dataset_path: str, config: DataProcessCon
         "_default": [(1.0, ("train", "all"))]
     }
     
-    total_puzzles = 0
+    puzzles = []
     for subdir in os.scandir(dataset_path):
         if subdir.is_dir():
             # Load all puzzles in this directory
-            puzzles = []
             for filename in glob(os.path.join(subdir.path, "*.json")):
                 with open(filename, "r") as f:
                     puzzles.append((Path(filename).stem, json.load(f)))
                     
-            # Shuffle puzzles
-            np.random.shuffle(puzzles)
-            
-            # Assign by fraction
-            for idx, (default_name, puzzle) in enumerate(puzzles):
-                fraction = idx / len(puzzles)
-                test_examples_dest = None
-                for f, dest in test_examples_map.get(subdir.name, test_examples_map["_default"]):
-                    if fraction < f:
-                        test_examples_dest = dest
-                        break
-                        
-                assert test_examples_dest is not None
+    # Shuffle puzzles
+    np.random.shuffle(puzzles)
+    
+    # Assign by fraction
+    for idx, (default_name, puzzle) in enumerate(tqdm(puzzles, desc=f"Loading {Path(dataset_path).parent.name}/{Path(dataset_path).name}")):
+        fraction = idx / len(puzzles)
+        test_examples_dest = None
+        for f, dest in test_examples_map.get(subdir.name, test_examples_map["_default"]):
+            if fraction < f:
+                test_examples_dest = dest
+                break
                 
-                convert_single_arc_puzzle(results, default_name, puzzle, config.num_aug, {"train": train_examples_dest, "test": test_examples_dest})
-                total_puzzles += 1
+        assert test_examples_dest is not None
+        
+        convert_single_arc_puzzle(results, default_name, puzzle, config.num_aug, {"train": train_examples_dest, "test": test_examples_dest})
 
-    print (f"[{dataset_path}] total puzzles: {total_puzzles}")
+    print (f"[{dataset_path}] total puzzles: {len(puzzles)}")
 
 
 def convert_dataset(config: DataProcessConfig):
