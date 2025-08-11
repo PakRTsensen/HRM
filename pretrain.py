@@ -68,6 +68,7 @@ class PretrainConfig(pydantic.BaseModel):
     checkpoint_every_eval: bool = False
     eval_interval: Optional[int] = None
     eval_save_outputs: List[str] = []
+    resume_from_checkpoint: Optional[str] = None
 
 
 @dataclass
@@ -175,9 +176,34 @@ def init_train_state(config: PretrainConfig, train_metadata: PuzzleDatasetMetada
 
     # Model
     model, optimizers, optimizer_lrs = create_model(config, train_metadata, world_size=world_size)
+    
+    step = 0
+    if config.resume_from_checkpoint:
+        print(f"[INFO] Resuming training from checkpoint: {config.resume_from_checkpoint}")
+        try:
+            state_dict = torch.load(config.resume_from_checkpoint, map_location="cuda")
+            # Handle compiled vs. non-compiled model state dict keys
+            try:
+                model.load_state_dict(state_dict, assign=True)
+            except RuntimeError:
+                print("[INFO] Checkpoint appears to be from a compiled model, removing '_orig_mod.' prefix.")
+                model.load_state_dict({k.removeprefix("_orig_mod."): v for k, v in state_dict.items()}, assign=True)
+
+            # Extract step number from filename, e.g., "step_12345"
+            filename = os.path.basename(config.resume_from_checkpoint)
+            if filename.startswith("step_"):
+                step = int(filename.removeprefix("step_"))
+                print(f"[INFO] Resuming from step {step}.")
+            else:
+                print("[WARNING] Could not determine step number from checkpoint filename. Starting from step 0.")
+
+        except FileNotFoundError:
+            print(f"[ERROR] Checkpoint file not found at {config.resume_from_checkpoint}. Starting from scratch.")
+        except Exception as e:
+            print(f"[ERROR] Failed to load checkpoint: {e}. Starting from scratch.")
 
     return TrainState(
-        step=0,
+        step=step,
         total_steps=total_steps,
 
         model=model,
