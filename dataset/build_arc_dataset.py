@@ -113,25 +113,27 @@ def convert_single_arc_puzzle(results: dict, default_name: str, puzzle: dict, au
     if aug_count > 0:
         hashes = {puzzle_hash(converted)}
 
-        for _trial in range(ARCAugmentRetriesFactor * aug_count):
-            # Augment plan
-            trans_id = np.random.randint(0, 8)
-            mapping = np.concatenate([np.arange(0, 1, dtype=np.uint8), np.random.permutation(np.arange(1, 10, dtype=np.uint8))])  # Permute colors, Excluding "0" (black)
-            
-            aug_repr = f"t{trans_id}_{''.join(str(x) for x in mapping)}"
-
-            def _map_grid(grid: np.ndarray):
-                return dihedral_transform(mapping[grid], trans_id)
-            
-            # Check duplicate
-            augmented = {dest: ARCPuzzle(f"{puzzle.id}_{aug_repr}", [(_map_grid(input), _map_grid(label)) for (input, label) in puzzle.examples]) for dest, puzzle in converted.items()}
-            h = puzzle_hash(augmented)
-            if h not in hashes:
-                hashes.add(h)
-                group.append(augmented)
+        with tqdm(total=aug_count, desc=f"Augmenting {name}", leave=False) as pbar:
+            for _trial in range(ARCAugmentRetriesFactor * aug_count):
+                # Augment plan
+                trans_id = np.random.randint(0, 8)
+                mapping = np.concatenate([np.arange(0, 1, dtype=np.uint8), np.random.permutation(np.arange(1, 10, dtype=np.uint8))])  # Permute colors, Excluding "0" (black)
                 
-            if len(group) >= aug_count + 1:
-                break
+                aug_repr = f"t{trans_id}_{''.join(str(x) for x in mapping)}"
+
+                def _map_grid(grid: np.ndarray):
+                    return dihedral_transform(mapping[grid], trans_id)
+                
+                # Check duplicate
+                augmented = {dest: ARCPuzzle(f"{puzzle.id}_{aug_repr}", [(_map_grid(input), _map_grid(label)) for (input, label) in puzzle.examples]) for dest, puzzle in converted.items()}
+                h = puzzle_hash(augmented)
+                if h not in hashes:
+                    hashes.add(h)
+                    group.append(augmented)
+                    pbar.update(1)
+                    
+                if len(group) >= aug_count + 1:
+                    break
             
         if len(group) < aug_count + 1:
             print (f"[Puzzle {name}] augmentation not full, only {len(group)}")
