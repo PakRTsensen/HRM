@@ -1,4 +1,4 @@
-# Panduan Pengaturan HRM
+# Panduan Setup HRM
 
 Panduan ini berisi langkah-langkah untuk menyiapkan dan menjalankan proyek Model Penalaran Hirarkis (HRM).
 
@@ -43,13 +43,13 @@ pip install -r requirements.txt
 # FlashAttention 2 (untuk sebagian besar GPU)
 pip install flash-attn
 
-# Atau FlashAttention 3 untuk GPU Hopper
+# FlashAttention 3 untuk GPU Hopper
 git clone https://github.com/Dao-AILab/flash-attention.git
 cd flash-attention/hopper
 python setup.py install
 ```
 
-### Langkah 3: Pengaturan Bobot & Bias
+### Langkah 3: Pengaturan Weights & Biases
 ```bash
 wandb login
 ```
@@ -75,7 +75,7 @@ python dataset/build_arc_dataset.py
 python dataset/build_maze_dataset.py
 ```
 
-## Pendidikan
+## Pelatihan
 
 ### Tutorial Sudoku Cepat
 ```bash
