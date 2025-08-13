@@ -31,7 +31,7 @@ class DataProcessConfig(BaseModel):
     ]
     output_dir: str = "data/arc-aug-chunks"
     seed: int = 42
-    num_aug: int = 4000
+    num_aug: int = 1024
 
 ARCMaxGridSize = 128
 ARCAugmentRetriesFactor = 5
